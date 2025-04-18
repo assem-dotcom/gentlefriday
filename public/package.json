@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "prebuild": "npm install webpack-cli --save-dev",
     "build": "webpack --mode production"
   },
   "dependencies": {
