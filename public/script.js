@@ -36,12 +36,21 @@ const candleQuotes = [
 ];
 
 // API configuration
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://lenny-the-lamb.onrender.com/api'
-  : 'http://localhost:3000/api';
+const API_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000/api'
+  : '/api';
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', () => {
+    // Make these functions available globally
+    window.initializeStorybook = initializeStorybook;
+    window.initializeCandles = initializeCandles;
+    window.initializeKindnessQuest = initializeKindnessQuest;
+    window.initializeMiniGame = initializeMiniGame;
+    window.initializeGratitudeGarden = initializeGratitudeGarden;
+    window.setupLennyEasterEgg = setupLennyEasterEgg;
+
+    // Initialize all features
     initializeStorybook();
     initializeCandles();
     initializeKindnessQuest();
@@ -53,17 +62,19 @@ document.addEventListener('DOMContentLoaded', () => {
 // Storybook functionality
 function initializeStorybook() {
     const storyContainer = document.querySelector('.story-container');
+    if (!storyContainer) return;
+
     let currentPage = 0;
 
     function displayPage(pageIndex) {
         const page = storyContent[pageIndex];
         storyContainer.innerHTML = `
             <div class="story-page">
-                <img src="${page.image}" alt="Story illustration">
-                <p>${page.text}</p>
-                <div class="story-controls">
-                    <button onclick="turnPage(-1)" ${currentPage === 0 ? 'disabled' : ''}>←</button>
-                    <button onclick="turnPage(1)" ${currentPage === storyContent.length - 1 ? 'disabled' : ''}>→</button>
+                <img src="${page.image}" alt="Story illustration" style="max-width: 100%; height: auto;">
+                <p style="margin: 1rem 0;">${page.text}</p>
+                <div class="story-controls" style="display: flex; justify-content: center; gap: 1rem;">
+                    <button onclick="turnPage(-1)" ${pageIndex === 0 ? 'disabled' : ''}>Previous</button>
+                    <button onclick="turnPage(1)" ${pageIndex === storyContent.length - 1 ? 'disabled' : ''}>Next</button>
                 </div>
             </div>
         `;
@@ -227,151 +238,97 @@ async function initializeKindnessQuest() {
 // Mini-Game functionality
 function initializeMiniGame() {
     const canvas = document.getElementById('game-canvas');
+    if (!canvas) return;
+    
     const ctx = canvas.getContext('2d');
     
-    // Set proper canvas size
+    // Set canvas size
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
     
-    const lenny = {
-        x: canvas.width / 2,
-        y: canvas.height - 50,
-        width: 30,
-        height: 30,
-        speed: 5
+    // Load images
+    const lennyImg = new Image();
+    lennyImg.src = 'assets/lenny.svg';
+    
+    const crossImg = new Image();
+    crossImg.src = 'assets/cross.svg';
+    
+    const game = {
+        lenny: {
+            x: canvas.width / 2,
+            y: canvas.height - 50,
+            width: 40,
+            height: 40,
+            speed: 5
+        },
+        cross: {
+            x: canvas.width / 2,
+            y: canvas.height - 90,
+            width: 30,
+            height: 40
+        },
+        score: 0,
+        gameOver: false
     };
     
-    const cross = {
-        width: 20,
-        height: 30
+    // Game loop
+    function gameLoop() {
+        if (!game.gameOver) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Lenny
+            ctx.drawImage(lennyImg, game.lenny.x, game.lenny.y, game.lenny.width, game.lenny.height);
+            
+            // Draw cross
+            ctx.drawImage(crossImg, game.cross.x, game.cross.y, game.cross.width, game.cross.height);
+            
+            // Draw score
+            ctx.fillStyle = '#333';
+            ctx.font = '20px Quicksand';
+            ctx.fillText(`Score: ${game.score}`, 10, 30);
+            
+            requestAnimationFrame(gameLoop);
+        }
+    }
+    
+    // Start game
+    lennyImg.onload = () => {
+        crossImg.onload = () => {
+            gameLoop();
+        };
     };
-    
-    const obstacles = [];
-    let score = 0;
-    let gameOver = false;
-    
-    // Create obstacles
-    function createObstacle() {
-        const width = Math.random() * 50 + 20;
-        const height = Math.random() * 30 + 10;
-        const x = Math.random() * (canvas.width - width);
-        
-        obstacles.push({
-            x: x,
-            y: -height,
-            width: width,
-            height: height
-        });
-    }
-    
-    // Draw functions
-    function drawLenny() {
-        ctx.fillStyle = '#FFB6C1';
-        ctx.fillRect(lenny.x, lenny.y, lenny.width, lenny.height);
-        
-        // Draw cross
-        ctx.fillStyle = '#8D6E63';
-        ctx.fillRect(lenny.x + 5, lenny.y - cross.height, cross.width, cross.height);
-        ctx.fillRect(lenny.x - 5, lenny.y - cross.height + 10, lenny.width + 10, 10);
-    }
-    
-    function drawObstacles() {
-        ctx.fillStyle = '#666';
-        obstacles.forEach(obstacle => {
-            ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-        });
-    }
-    
-    function drawScore() {
-        ctx.fillStyle = '#333';
-        ctx.font = '20px Arial';
-        ctx.fillText(`Score: ${score}`, 10, 30);
-    }
-    
-    function drawGameOver() {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = 'white';
-        ctx.font = '30px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2);
-        ctx.font = '20px Arial';
-        ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 40);
-    }
-    
-    // Update game state
-    function update() {
-        if (gameOver) {
-            drawGameOver();
-            return;
-        }
-        
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Move obstacles
-        obstacles.forEach((obstacle, index) => {
-            obstacle.y += 2;
-            
-            // Check collision
-            if (lenny.x < obstacle.x + obstacle.width &&
-                lenny.x + lenny.width > obstacle.x &&
-                lenny.y < obstacle.y + obstacle.height &&
-                lenny.y + lenny.height > obstacle.y) {
-                gameOver = true;
-            }
-            
-            // Remove obstacles that are off screen
-            if (obstacle.y > canvas.height) {
-                obstacles.splice(index, 1);
-                score++;
-            }
-        });
-        
-        // Create new obstacles
-        if (Math.random() < 0.02) {
-            createObstacle();
-        }
-        
-        drawLenny();
-        drawObstacles();
-        drawScore();
-        
-        requestAnimationFrame(update);
-    }
     
     // Handle keyboard input
-    document.addEventListener('keydown', (e) => {
-        if (gameOver) return;
+    window.addEventListener('keydown', (e) => {
+        if (game.gameOver) return;
         
         switch(e.key) {
             case 'ArrowLeft':
-                lenny.x = Math.max(0, lenny.x - lenny.speed);
+                game.lenny.x = Math.max(0, game.lenny.x - game.lenny.speed);
+                game.cross.x = game.lenny.x;
                 break;
             case 'ArrowRight':
-                lenny.x = Math.min(canvas.width - lenny.width, lenny.x + lenny.speed);
+                game.lenny.x = Math.min(canvas.width - game.lenny.width, game.lenny.x + game.lenny.speed);
+                game.cross.x = game.lenny.x;
                 break;
         }
     });
-    
-    // Start the game
-    update();
 }
 
 // Gratitude Garden functionality
 async function initializeGratitudeGarden() {
-    const gratitudeInput = document.getElementById('gratitude-input');
-    const plantFlowerBtn = document.getElementById('plant-flower');
+    const container = document.querySelector('.garden-container');
+    const input = document.getElementById('gratitude-input');
+    const button = document.getElementById('plant-flower');
     const flowersContainer = document.querySelector('.flowers-container');
     
-    // Load existing flowers from API
+    if (!container || !input || !button || !flowersContainer) return;
+    
     async function loadGratitudeEntries() {
         try {
             const response = await fetch(`${API_URL}/gratitude`);
             const entries = await response.json();
-            entries.forEach(entry => {
-                createFlower(entry.text);
-            });
+            entries.forEach(entry => createFlower(entry.text));
         } catch (error) {
             console.error('Error loading gratitude entries:', error);
         }
@@ -381,38 +338,34 @@ async function initializeGratitudeGarden() {
         const flower = document.createElement('div');
         flower.className = 'flower';
         flower.innerHTML = `
-            <div class="flower-petal"></div>
-            <div class="flower-center"></div>
-            <p>${text}</p>
+            <div class="flower-petals">🌸</div>
+            <div class="flower-text">${text}</div>
         `;
         flowersContainer.appendChild(flower);
     }
     
-    plantFlowerBtn.addEventListener('click', async () => {
-        const gratitude = gratitudeInput.value.trim();
-        if (gratitude) {
-            try {
-                const response = await fetch(`${API_URL}/gratitude`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ text: gratitude }),
-                });
-                
-                if (response.ok) {
-                    createFlower(gratitude);
-                    gratitudeInput.value = '';
-                } else {
-                    console.error('Error saving gratitude entry');
-                }
-            } catch (error) {
-                console.error('Error saving gratitude entry:', error);
+    button.addEventListener('click', async () => {
+        const text = input.value.trim();
+        if (!text) return;
+        
+        try {
+            const response = await fetch(`${API_URL}/gratitude`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text }),
+            });
+            
+            if (response.ok) {
+                createFlower(text);
+                input.value = '';
             }
+        } catch (error) {
+            console.error('Error saving gratitude:', error);
         }
     });
     
-    // Load initial gratitude entries
     loadGratitudeEntries();
 }
 
