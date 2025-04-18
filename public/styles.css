@@ -124,24 +124,36 @@ h2 {
 
 .candle-quote {
     position: absolute;
-    bottom: -40px;
+    bottom: -60px;
     left: 50%;
     transform: translateX(-50%);
-    width: 150px;
+    width: 200px;
     text-align: center;
     font-size: 0.9rem;
     color: var(--color-text);
     opacity: 0;
     transition: opacity 0.3s ease;
+    background: white;
+    padding: 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px var(--color-shadow);
 }
 
 .candle.lit .candle-quote {
     opacity: 1;
+    animation: fadeInOut 5s forwards;
 }
 
 @keyframes flicker {
     0%, 100% { transform: translateX(-50%) scale(1); }
     50% { transform: translateX(-50%) scale(1.1); }
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
 }
 
 /* Flower Styles */

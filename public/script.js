@@ -46,7 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.initializeStorybook = initializeStorybook;
     window.initializeCandles = initializeCandles;
     window.initializeKindnessQuest = initializeKindnessQuest;
-    window.initializeMiniGame = initializeMiniGame;
     window.initializeGratitudeGarden = initializeGratitudeGarden;
     window.setupLennyEasterEgg = setupLennyEasterEgg;
 
@@ -54,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeStorybook();
     initializeCandles();
     initializeKindnessQuest();
-    initializeMiniGame();
     initializeGratitudeGarden();
     setupLennyEasterEgg();
 });
@@ -98,14 +96,21 @@ function initializeCandles() {
         candle.className = 'candle';
         candle.innerHTML = `
             <div class="candle-flame"></div>
-            <div class="candle-quote" style="display: none;">${candleQuotes[i]}</div>
+            <div class="candle-quote">${candleQuotes[i]}</div>
         `;
 
         candle.addEventListener('click', () => {
             if (!candle.classList.contains('lit')) {
                 candle.classList.add('lit');
                 litCandles++;
-                candle.querySelector('.candle-quote').style.display = 'block';
+                const quoteElement = candle.querySelector('.candle-quote');
+                
+                // Handle quote animation end
+                quoteElement.addEventListener('animationend', () => {
+                    quoteElement.style.display = 'none';
+                    candle.classList.remove('lit');
+                    litCandles--;
+                }, { once: true });
                 
                 if (litCandles === 3) {
                     // Trigger Lenny's happy dance
@@ -163,20 +168,35 @@ async function initializeKindnessQuest() {
     }
     
     // Drawing functions
+    function getCoordinates(e) {
+        let x, y;
+        if (e.type.includes('touch')) {
+            const rect = canvas.getBoundingClientRect();
+            x = e.touches[0].clientX - rect.left;
+            y = e.touches[0].clientY - rect.top;
+        } else {
+            x = e.offsetX;
+            y = e.offsetY;
+        }
+        return [x, y];
+    }
+    
     function startDrawing(e) {
         isDrawing = true;
-        [lastX, lastY] = [e.offsetX, e.offsetY];
+        [lastX, lastY] = getCoordinates(e);
     }
     
     function draw(e) {
         if (!isDrawing) return;
         
+        const [x, y] = getCoordinates(e);
+        
         ctx.beginPath();
         ctx.moveTo(lastX, lastY);
-        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.lineTo(x, y);
         ctx.stroke();
         
-        [lastX, lastY] = [e.offsetX, e.offsetY];
+        [lastX, lastY] = [x, y];
     }
     
     function stopDrawing() {
@@ -195,11 +215,22 @@ async function initializeKindnessQuest() {
         heartsGallery.appendChild(heartContainer);
     }
     
-    // Event listeners
+    // Event listeners for both mouse and touch
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDrawing);
     canvas.addEventListener('mouseout', stopDrawing);
+    
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        startDrawing(e);
+    });
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        draw(e);
+    });
+    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchcancel', stopDrawing);
     
     clearButton.addEventListener('click', () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -233,86 +264,6 @@ async function initializeKindnessQuest() {
     
     // Load initial hearts
     loadHearts();
-}
-
-// Mini-Game functionality
-function initializeMiniGame() {
-    const canvas = document.getElementById('game-canvas');
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    
-    // Set canvas size
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    
-    // Load images
-    const lennyImg = new Image();
-    lennyImg.src = 'assets/lenny.svg';
-    
-    const crossImg = new Image();
-    crossImg.src = 'assets/cross.svg';
-    
-    const game = {
-        lenny: {
-            x: canvas.width / 2,
-            y: canvas.height - 50,
-            width: 40,
-            height: 40,
-            speed: 5
-        },
-        cross: {
-            x: canvas.width / 2,
-            y: canvas.height - 90,
-            width: 30,
-            height: 40
-        },
-        score: 0,
-        gameOver: false
-    };
-    
-    // Game loop
-    function gameLoop() {
-        if (!game.gameOver) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw Lenny
-            ctx.drawImage(lennyImg, game.lenny.x, game.lenny.y, game.lenny.width, game.lenny.height);
-            
-            // Draw cross
-            ctx.drawImage(crossImg, game.cross.x, game.cross.y, game.cross.width, game.cross.height);
-            
-            // Draw score
-            ctx.fillStyle = '#333';
-            ctx.font = '20px Quicksand';
-            ctx.fillText(`Score: ${game.score}`, 10, 30);
-            
-            requestAnimationFrame(gameLoop);
-        }
-    }
-    
-    // Start game
-    lennyImg.onload = () => {
-        crossImg.onload = () => {
-            gameLoop();
-        };
-    };
-    
-    // Handle keyboard input
-    window.addEventListener('keydown', (e) => {
-        if (game.gameOver) return;
-        
-        switch(e.key) {
-            case 'ArrowLeft':
-                game.lenny.x = Math.max(0, game.lenny.x - game.lenny.speed);
-                game.cross.x = game.lenny.x;
-                break;
-            case 'ArrowRight':
-                game.lenny.x = Math.min(canvas.width - game.lenny.width, game.lenny.x + game.lenny.speed);
-                game.cross.x = game.lenny.x;
-                break;
-        }
-    });
 }
 
 // Gratitude Garden functionality
